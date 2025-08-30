@@ -5,16 +5,41 @@
 from hash import *
 import math
 
+### developed functions ###
+from typing import List, Tuple
+
+def _build_levels(leaves: List[bytes]) -> List[List[bytes]]:
+    """levels[0] = [root], levels[-1] = leaves (non-mutating)."""
+    if not leaves:
+        raise ValueError("Empty leaves")
+    cur = leaves[:]  # copy
+    all_levels = [cur]
+    while len(cur) > 1:
+        nxt = []
+        for i in range(0, len(cur), 2):
+            left = cur[i]
+            right = cur[i+1] if i+1 < len(cur) else cur[i]  # duplicate last
+            nxt.append(merkle_parent(left, right))
+        cur = nxt
+        all_levels.append(cur)
+    return list(reversed(all_levels))  # root level first
+
+def _leaf_range(total_leaves: int, depth: int, index: int, max_depth: int) -> Tuple[int, int]:
+    """Return [start, end) leaf indices covered by node (depth, index)."""
+    width = 1 << (max_depth - depth)
+    start = index * width
+    end = min(start + width, total_leaves)
+    return start, end
+
+### default functions ###
+
 def merkle_parent(hash1, hash2):
     '''Takes the binary hashes and calculates the hash256'''
-    # return the hash256 of hash1 + hash2
     return hash256(hash1 + hash2)
-
 
 def merkle_parent_level(hashes):
     '''Takes a list of binary hashes and returns a list that's half
     the length'''
-    # if the list has exactly 1 element raise an error
     if len(hashes) == 1:
         raise RuntimeError('Cannot take a parent level with only 1 item')
     # if the list has an odd number of elements, duplicate the last one
@@ -36,7 +61,6 @@ def merkle_parent_level(hashes):
         hashes.pop(-1)
     return parent_level
 
-
 def merkle_root(hashes):
     '''Takes a list of binary hashes and returns the merkle root
     '''
@@ -48,14 +72,6 @@ def merkle_root(hashes):
         current_level = merkle_parent_level(current_level)
     # return the 1st item of the current level
     return current_level[0]
-
-class MerkleProof:
-    def __init__(self, hashesOfInterest, nrLeaves=None, flags=None, hashes=None):
-        self.hashesOfInterest = hashesOfInterest
-        self.nrLeaves = nrLeaves
-        self.flags = flags
-        self.hashes = hashes    
-
 
 class MerkleTree:
     '''This is the full Merkle tree class
@@ -69,7 +85,8 @@ class MerkleTree:
     def __str__(self):
         tmp = ''
         print('\nPrinting the merkle tree level by level:')
-        current_level = self.hashes
+        current_level = self.hashes[:]  # defensive copy
+        # current_level = self.hashes
 
         items = ''
 
@@ -97,15 +114,67 @@ class MerkleTree:
 
 
 
-    def generate_proof(self,hashesOfInterest):
-        '''
-        HW1: Implement the function that generates the flag bits for hashesOfInterest in the received list
-        And also the missing hashes needed to show that 
-        If any of the hashes is absent from the leaves of the tree, just throw an error
-        Returns an object of class MerkleProof
-        !!!hashesOfInterest are always assumed to be leaves of the Merkle tree!!!
-        '''
-        return True
+    def generate_proof(self, hashesOfInterest: List[bytes]):
+        
+        """Return MerkleProof with flag bits + minimal hashes for the given target leaves.
+        Assumes all targets are leaves; raises if any target not in self.hashes."""
+        n = len(self.hashes)
+        if n == 0:
+            raise RuntimeError("Empty tree")
+        # 1) validate + collect target indices
+        #    (if duplicates appear in leaves, keep all indices)
+        leaves = self.hashes
+        index_map = {}
+        for i, h in enumerate(leaves):
+            index_map.setdefault(h, []).append(i)
+
+        target_indices = []
+        for h in hashesOfInterest:
+            if h not in index_map:
+                raise RuntimeError("Target not found in leaves")
+            # include all occurrences of this hash
+            target_indices.extend(index_map[h])
+
+        target_set = set(target_indices)
+
+        # 2) build levels
+        levels = _build_levels(leaves)
+        max_depth = len(levels) - 1  # 0 = root, max_depth = leaves
+
+        # 3) contains_interest mask
+        contains = [ [False]*len(level) for level in levels ]
+        for depth, level in enumerate(levels):
+            for idx in range(len(level)):
+                start, end = _leaf_range(n, depth, idx, max_depth)
+                # range [start, end) intersects target_set?
+                if any(k in target_set for k in range(start, end)):
+                    contains[depth][idx] = True
+
+        flags: List[int] = []
+        proof_hashes: List[bytes] = []
+
+        def right_exists(depth: int, idx: int) -> bool:
+            return (idx * 2 + 1) < len(levels[depth + 1])
+
+        # 4) preorder traversal
+        def gen(depth: int, idx: int):
+            if not contains[depth][idx]:
+                flags.append(0)
+                proof_hashes.append(levels[depth][idx])
+                return
+            flags.append(1)
+            if depth == max_depth:
+                # leaf; must be a target leaf
+                proof_hashes.append(levels[depth][idx])
+                return
+            # internal: expand children
+            gen(depth + 1, idx * 2)
+            if right_exists(depth, idx):
+                gen(depth + 1, idx * 2 + 1)
+            # if right doesn't exist, duplication is implied; nothing to append
+
+        gen(0, 0)
+        return MerkleProof(hashesOfInterest, nrLeaves=n, flags=flags, hashes=proof_hashes)
 
 class MerkleProof:
     def __init__(self, hashesOfInterest, nrLeaves = None, flags = None, hashes = None):
@@ -113,8 +182,6 @@ class MerkleProof:
         self.nrLeaves = nrLeaves
         self.flags = flags
         self.hashes = hashes
-
-
 
 class SortedTree:
     '''
@@ -130,8 +197,6 @@ class SortedTree:
         '''
         return True
 
-
-	
 class PartialMerkleTree:
 
     def __init__(self, total):
@@ -163,7 +228,7 @@ class PartialMerkleTree:
                 else:
                     short = '{}...'.format(h.hex()[:8])
                 if depth == self.current_depth and index == self.current_index:
-                    items.prepend('*{}*'.format(short[:-2]))
+                    items.insert('*{}*'.format(short[:-2]))
                 else:
                     items.append('{}'.format(short))
             result.append(', '.join(items))
@@ -265,7 +330,6 @@ def verify_inclusion(hashesOfInterest, merkleRoot, proof):
 
     return (tree.root() == merkleRoot)
 
-
 def verify_non_inclusion(hash, merkleRoot, proof):
     '''
     The method receives a hash, a Merkle root, and a proof that hash does not belong to this Merkle root
@@ -275,7 +339,6 @@ def verify_non_inclusion(hash, merkleRoot, proof):
 
 	
 ## Data for testing:
-
 
 hex_hashes = [
     "9745f7173ef14ee4155722d1cbf13304339fd00d900b759c6f9d58579b5765fb",
@@ -310,7 +373,6 @@ hashes = ["6382df3f3a0b1323ff73f4da50dc5e318468734d6054111481921d845c020b93",
 "8636b7a3935a68e49dd19fc224a8318f4ee3c14791b3388f47f9dc3dee2247d1"
 ]
 
-
 r_hashes = [bytes.fromhex(h) for h in hashes]
 
 hashesOfInterest = ["9b74f89fa3f93e71ff2c241f32945d877281a6a50a6bf94adac002980aafe5ab",
@@ -322,3 +384,6 @@ r_interest = [bytes.fromhex(h) for h in hashesOfInterest]
 proof = MerkleProof(r_interest,16,flags,r_hashes)
 
 print(verify_inclusion(r_interest, tree.root, proof))
+
+if __name__ == "__main__":
+    print("here i want to add the options to use the hardcoded provided way to test or the option to use the developed functions and actions")
