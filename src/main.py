@@ -58,7 +58,7 @@ def merkle_root(hashes: List[bytes]) -> bytes:
     return current_level[0]
 
 class MerkleProof:
-    """Container for Bitcoin-style partial merkle proof (flags + hashes).
+    """Container for partial merkle proof (flags + hashes).
        `meta` is optional and used for non-inclusion (neighbors, splits)."""
     def __init__(self, hashesOfInterest, nrLeaves=None, flags=None, hashes=None, meta=None):
         self.hashesOfInterest = hashesOfInterest
@@ -89,13 +89,6 @@ class MerkleTree:
         # print from top to bottom
         return '\n'.join(reversed(lines))
 
-    # ========================================================
-    # STEP 3 — generate_proof(hashesOfInterest)
-    # --------------------------------------------------------
-    # - Validate targets are leaves
-    # - Mark subtrees containing targets
-    # - Preorder traversal to emit flags + minimal hashes
-    # ========================================================
     def generate_proof(self, hashesOfInterest: List[bytes]) -> MerkleProof:
         """Return MerkleProof with flag bits + minimal hashes for target leaves.
            Assumes all targets are leaves; raises if any target not found."""
@@ -347,11 +340,11 @@ class SortedTree(MerkleTree):
         if found:
             raise RuntimeError("hash IS present; cannot prove non-inclusion")
 
-        # neighbors by hex (optional at extremes)
+        # neighbors by hex
         left_hex = self.leaves_hex[pos-1] if pos > 0 else None
         right_hex = self.leaves_hex[pos] if pos < len(self.leaves_hex) else None
 
-        # Build inclusion proofs (flags+hashes) for the neighbors we have
+        # Build inclusion proofs (flags + hashes) for the neighbors we have
         flags_concat, hashes_concat = [], []
         split_flags = split_hashes = 0
 
@@ -380,7 +373,7 @@ class SortedTree(MerkleTree):
             "split_flags": split_flags,
             "split_hashes": split_hashes,
         }
-        # hashesOfInterest holds the neighbor(s) we proved INCLUDED
+        # hashesOfInterest holds the neighbor(s) we proved that ar INCLUDED
         return MerkleProof(neighbors, nrLeaves=len(self.hashes),
                            flags=flags_concat, hashes=hashes_concat, meta=meta)
 
