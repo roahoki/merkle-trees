@@ -96,7 +96,7 @@ class MerkleTree:
         if n == 0:
             raise RuntimeError("Empty tree")
 
-        # 3.1 Validate targets & collect indices (all occurrences)
+        # Validate targets adn collect indices (all occurrences)
         leaves = self.hashes
         index_map = {}
         for i, h in enumerate(leaves):
@@ -109,11 +109,11 @@ class MerkleTree:
             target_indices.extend(index_map[h])
         target_set = set(target_indices)
 
-        # 3.2 Build levels
+        # Build levels
         levels = _build_levels(leaves)
         max_depth = len(levels) - 1  # 0=root, max_depth=leaves
 
-        # 3.3 Mark subtrees containing targets
+        # Mark subtrees containing targets
         contains = [[False] * len(level) for level in levels]
         for depth, level in enumerate(levels):
             for idx in range(len(level)):
@@ -121,7 +121,7 @@ class MerkleTree:
                 if any(k in target_set for k in range(start, end)):
                     contains[depth][idx] = True
 
-        # 3.4 Preorder traversal to produce flags + hashes
+        # Preorder traversal to produce flags + hashes
         flags: List[int] = []
         proof_hashes: List[bytes] = []
 
