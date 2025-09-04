@@ -1,32 +1,10 @@
-# Most of the code is taken from Jimmy Song's book 'Programming Bitcoin'
-# All trees are constructed with hashes only, and not the raw data
-# If you want to implement them with raw data, you just add one extra level
-
-# ============================================================
-# STEP 1 — PROJECT SCAFFOLD & DOCS (roadmap notes)
-# ------------------------------------------------------------
-# Docs:
-# - docs/00_glossary.md
-# - docs/01_merkle_basics.md
-# - docs/02_partial_merkle_proof.md
-# - docs/03_sorted_tree_non_inclusion.md
-# - docs/04_decisiones_implementacion.md
-# - docs/05_casos_prueba.md
-#
-# In code, we'll add:
-# - CLI switch to test either the provided fixture or your generated proof
-# - Clean helpers that avoid mutation
-# ============================================================
-
 from hash import *
 import math
 from typing import List, Tuple
 import argparse
 import sys
 
-# ---------------------------
-# Helpers (non-mutating)
-# ---------------------------
+# Helpers
 
 def merkle_parent(hash1: bytes, hash2: bytes) -> bytes:
     """Takes two binary hashes and returns hash256"""
@@ -268,10 +246,7 @@ class PartialMerkleTree:
             if flag_bit != 0:
                 raise RuntimeError('flag bits not all consumed')
 
-# ---------------------------
 # Verifiers
-# ---------------------------
-
 def verify_inclusion(hashesOfInterest: List[bytes], merkleRoot: bytes, proof: MerkleProof) -> bool:
     """Verify that hashesOfInterest belong to a Merkle tree (root = merkleRoot)."""
     tree = PartialMerkleTree(proof.nrLeaves)
@@ -347,14 +322,6 @@ def verify_non_inclusion(hash_val: bytes, merkleRoot: bytes, proof: MerkleProof)
         # empty tree? not our case
         return False
 
-
-# ============================================================
-# STEP 4 — SortedTree (non-inclusion proof) — scaffolding
-# ------------------------------------------------------------
-# This will provide proofs of non-inclusion using neighbors (a,b).
-# Fill in after inclusion path is solid.
-# ============================================================
-
 import bisect
 
 class SortedTree(MerkleTree):
@@ -417,10 +384,7 @@ class SortedTree(MerkleTree):
         return MerkleProof(neighbors, nrLeaves=len(self.hashes),
                            flags=flags_concat, hashes=hashes_concat, meta=meta)
 
-
-# ============================================================
-# Test data (fixture from the starter)
-# ============================================================
+#==== Test data (fixture from the starter) ====#
 
 hex_hashes = [
     "9745f7173ef14ee4155722d1cbf13304339fd00d900b759c6f9d58579b5765fb",
@@ -461,9 +425,7 @@ targets_hex = [
 ]
 targets = [bytes.fromhex(h) for h in targets_hex]
 
-# ---------------------------
-# CLI harness
-# ---------------------------
+# CLI
 
 def _tohex(arr: List[bytes]) -> List[str]:
     return [h.hex() for h in arr]
@@ -499,17 +461,9 @@ def run_non_inclusion_demo():
     if not ok:
         sys.exit(1)
 
-
 def run_both():
     run_fixture()
     run_generated(verbose=True)
-
-# ============================================================
-# STEP 2 — (docs) explain odd duplication & flags traversal
-# STEP 3 — (in code) implemented generate_proof above
-# STEP 4 — SortedTree + non-inclusion (TODOs placed)
-# STEP 5 — verify_non_inclusion (TODO, after STEP 4)
-# ============================================================
 
 def main():
     parser = argparse.ArgumentParser(description="Merkle Tree proof tester")

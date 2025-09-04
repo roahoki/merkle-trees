@@ -1,5 +1,5 @@
 import pytest
-from sabotage import MerkleTree, verify_inclusion
+from main import MerkleTree, verify_inclusion
 
 def test_odd_leaf_duplication_and_all_targets():
     # 5 leaves to force duplication

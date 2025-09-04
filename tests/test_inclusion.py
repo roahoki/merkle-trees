@@ -1,5 +1,5 @@
 import pytest
-from sabotage import MerkleTree, MerkleProof, verify_inclusion
+from main import MerkleTree, MerkleProof, verify_inclusion
 
 HEX = [
     "9745f7173ef14ee4155722d1cbf13304339fd00d900b759c6f9d58579b5765fb",
