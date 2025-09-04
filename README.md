@@ -123,10 +123,10 @@ def test_non_inclusion():
 
 **Verificación rápida en 3 pasos:**
 ```bash
-# 1. Test básico (30 seg)
+# 1. Test básico
 python3 src/main.py --mode both
 
-# 2. Demo API (30 seg)  
+# 2. Demo API  
 python3 quick_professor_test.py
 
 # 3. Tests personalizados (usar plantillas arriba)
