@@ -263,7 +263,7 @@ def verify_non_inclusion(hash_val: bytes, merkleRoot: bytes, proof: MerkleProof)
     if proof.meta is None:
         return False
 
-    # 1) split concatenated flags/hashes back into neighbor subproofs
+    # split concatenated flags/hashes back into neighbor subproofs
     F = proof.flags[:]
     H = proof.hashes[:]
     sf = proof.meta.get("split_flags", 0)
@@ -275,7 +275,7 @@ def verify_non_inclusion(hash_val: bytes, merkleRoot: bytes, proof: MerkleProof)
     ok_left = True
     ok_right = True
 
-    # neighbors are stored in proof.hashesOfInterest (bytes) in order: [left?, right?]
+    # neighbors are stored in proof.hashesOfInterest (bytes) in order
     neighbors = proof.hashesOfInterest
     if len(neighbors) == 2:
         left_b, right_b = neighbors[0], neighbors[1]
@@ -286,7 +286,7 @@ def verify_non_inclusion(hash_val: bytes, merkleRoot: bytes, proof: MerkleProof)
         else:
             left_b, right_b = None, neighbors[0]
     else:
-        return False  # malformed
+        return False
 
     if left_b is not None:
         ok_left = verify_inclusion([left_b], merkleRoot,
@@ -297,9 +297,9 @@ def verify_non_inclusion(hash_val: bytes, merkleRoot: bytes, proof: MerkleProof)
                                     MerkleProof([right_b], nrLeaves=proof.nrLeaves,
                                                 flags=right_flags, hashes=right_hashes))
     if not (ok_left and ok_right):
-        return False
+        return False # prevents non included neighbors
 
-    # 2) strict ordering checks (by hex)
+    # strict ordering checks (by hex)
     h_hex = hash_val.hex()
     left_hex = proof.meta.get("left_hex")
     right_hex = proof.meta.get("right_hex")
